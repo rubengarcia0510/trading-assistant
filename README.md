@@ -81,3 +81,27 @@ Opcionales (ya tienen default razonable):
 export UNIVERSE_STOCK_TOP_N=130
 export UNIVERSE_CRYPTO_TOP_N=30
 ```
+
+## TAI-10: detección de setups (análisis técnico)
+
+Endpoints:
+```
+GET  /setups        # últimos setups detectados (del último scan, en memoria)
+POST /setups/scan   # fuerza un escaneo completo del universo ahora mismo
+```
+
+**Algoritmo (simple a propósito, para el MVP):** cruce de medias móviles — SMA(9) cruzando por encima de SMA(21) es la señal alcista. Cuando se detecta:
+- **Entry price:** el último cierre.
+- **Stop-loss:** 3% por debajo del entry.
+- **Take-profit:** 6% por encima del entry (ratio riesgo/beneficio 1:2).
+- **Nivel de riesgo:** BAJO/MEDIO/ALTO según la volatilidad reciente (desvío estándar de los últimos 10 cierres, como % del precio).
+
+Es un heurístico simple, no un modelo sofisticado — si más adelante hace falta algo más elaborado, `TechnicalAnalysisService` es el único lugar que hay que tocar; el resto del pipeline no sabe ni le importa cómo se decide un setup.
+
+**Frecuencia de escaneo:** cada 3 minutos por default (`DETECTION_SCAN_INTERVAL_MS`), respetando el límite de rate de Alpaca calculado en TAI-7. El primer escaneo espera 1 minuto después de levantar la app (`DETECTION_INITIAL_DELAY_MS`), para darle tiempo a que el universo tenga datos.
+
+**Importante:** si el universo todavía está vacío (no corriste `POST /universe/refresh` ni pasaron las 6 AM del cron), el escaneo programado se salta ese ciclo sin romper nada — para probar esto de una, primero asegurate de tener el universo cargado (ver sección de TAI-9 arriba).
+
+## Qué sigue
+
+- **TAI-11**: Spring AI para la explicación en lenguaje simple — toma un `Setup` de TAI-10 y lo convierte en el mensaje tipo "NVIDIA muestra un patrón alcista...".
