@@ -51,6 +51,33 @@ Si en algún momento se quiere optimizar, valdría la pena probar el endpoint mu
 
 ## Qué sigue
 
-- **TAI-9**: definir el universo dinámico de activos (top 100-150 acciones + top 30 cripto) y usarlo para llamar a `getLatestStockQuotes`/`getLatestCryptoQuotes` en un ciclo programado.
-- **TAI-10**: algoritmo de detección de setups sobre las barras que ya trae `getStockBars`/`getCryptoBars`.
+- **TAI-10**: algoritmo de detección de setups sobre las barras que ya trae `getStockBars`/`getCryptoBars`, usando el universo de `UniverseService.getCurrent()`.
 - **TAI-11**: Spring AI para la explicación en lenguaje simple (reemplaza el `LlmClient` manual del spike).
+
+## TAI-9: universo dinámico de activos
+
+Endpoints:
+```
+GET  /universe            # universo actual (en memoria, calculado la última vez)
+POST /universe/refresh    # fuerza un recálculo ahora (no hace falta esperar al cron)
+```
+
+Se recalcula automáticamente **una vez al día, a las 6 AM** (antes de la apertura del mercado de EE.UU.) — configurable con `UNIVERSE_REFRESH_CRON`. No hace falta más frecuencia: el ranking de mayores empresas por capitalización no cambia hora a hora.
+
+**Fuentes de datos:**
+- **Acciones (top 130 por default):** dos piezas combinadas — la lista de símbolos candidatos viene de los constituyentes del S&P 500 (CSV público en GitHub, sin API key), y la capitalización real de cada uno viene de [Finnhub](https://finnhub.io) (free tier: 60 requests/minuto, sin tarjeta). *(FMP se descartó como fuente: jubiló el endpoint de stock screener del plan gratuito — ahora requiere plan pago.)*
+- **Cripto (top 30 por default):** con los propios datos de Alpaca — se listan los pares cripto que Alpaca soporta y se rankean por volumen de 24hs usando `getCryptoBars`. No hace falta ninguna fuente externa acá.
+
+**⚠️ El recálculo de acciones tarda ~9-10 minutos.** Con ~500 símbolos del S&P 500 y el límite de 60 req/min de Finnhub, el código pacea las requests a propósito (una cada 1.1 segundos) para no pasarse del límite. Como se corre una vez al día a las 6 AM, esto no es un problema en producción — pero si lo probás manualmente con `POST /universe/refresh`, esperá varios minutos antes de que responda.
+
+**Variables nuevas:**
+```bash
+export FINNHUB_API_KEY="tu_key_de_finnhub"
+```
+(Sacala gratis en [finnhub.io](https://finnhub.io/register), sin tarjeta — el dashboard te muestra la key apenas confirmás el mail.)
+
+Opcionales (ya tienen default razonable):
+```bash
+export UNIVERSE_STOCK_TOP_N=130
+export UNIVERSE_CRYPTO_TOP_N=30
+```
