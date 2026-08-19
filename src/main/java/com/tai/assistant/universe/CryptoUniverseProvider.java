@@ -15,6 +15,11 @@ import java.util.Set;
  * (a diferencia de acciones, acá no hace falta una fuente externa: Alpaca ya
  * soporta un conjunto acotado de pares cripto, y trae volumen en sus barras).
  *
+ * Se filtra a solo pares cotizados en USD (ej. "BTC/USD", no "LINK/BTC") — evita
+ * mezclar unidades distintas (dólares vs. fracciones de otra cripto) en el mismo
+ * ranking, y evita que un mismo activo compita por volumen en dos lugares distintos
+ * del ranking (ej. LINK como "LINK/USD" y como base de "LINK/BTC").
+ *
  * Se excluyen las stablecoins (USDC, USDT, etc.): mueven mucho volumen pero por
  * diseño no tienen variación de precio real, así que no tiene sentido "detectar
  * un setup" ahí — solo ocuparían lugares del ranking sin aportar nada útil.
@@ -38,9 +43,10 @@ public class CryptoUniverseProvider {
         this.marketDataClient = marketDataClient;
     }
 
-    /** Devuelve hasta {@code topN} símbolos cripto (sin stablecoins), ordenados de mayor a menor volumen de 24hs. */
+    /** Devuelve hasta {@code topN} símbolos cripto (solo pares USD, sin stablecoins), ordenados de mayor a menor volumen de 24hs. */
     public List<String> fetchTopByVolume(int topN) {
         List<String> allSymbols = tradingClient.getActiveCryptoSymbols().stream()
+                .filter(this::isUsdPair)
                 .filter(symbol -> !isStablecoin(symbol))
                 .toList();
 
@@ -61,6 +67,15 @@ public class CryptoUniverseProvider {
                 .limit(topN)
                 .map(SymbolVolume::symbol)
                 .toList();
+    }
+
+    /**
+     * Solo pares cotizados en USD (ej. "BTC/USD", no "LINK/BTC").
+     * Evita mezclar unidades distintas en el mismo ranking — todo el análisis
+     * técnico posterior (TAI-10) trabaja con precios en dólares, no fracciones de otra cripto.
+     */
+    private boolean isUsdPair(String symbol) {
+        return symbol.endsWith("/USD");
     }
 
     /**
