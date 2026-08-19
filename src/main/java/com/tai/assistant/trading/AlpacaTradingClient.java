@@ -76,6 +76,27 @@ public class AlpacaTradingClient {
     }
 
     /**
+     * Símbolos cripto activos y tradeables que Alpaca soporta (ej. "BTC/USD", "ETH/USD").
+     * Alpaca solo soporta un subconjunto acotado de criptomonedas (no miles como CoinGecko),
+     * así que este es el universo de partida antes de rankear por volumen (ver CryptoUniverseProvider).
+     */
+    public List<String> getActiveCryptoSymbols() {
+        String body = get("/v2/assets?asset_class=crypto&status=active");
+        List<String> symbols = new ArrayList<>();
+        try {
+            JsonNode arr = objectMapper.readTree(body);
+            for (JsonNode a : arr) {
+                if (a.path("tradable").asBoolean(false)) {
+                    symbols.add(a.path("symbol").asText());
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("No se pudo parsear la lista de activos cripto de Alpaca", e);
+        }
+        return symbols;
+    }
+
+    /**
      * Coloca una orden de mercado. Uso manual únicamente (ver nota de la clase) —
      * no se invoca desde ningún proceso automático de detección de setups.
      *

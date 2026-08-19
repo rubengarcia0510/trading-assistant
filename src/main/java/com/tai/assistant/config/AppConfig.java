@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestClient;
 
 @Configuration
-@EnableConfigurationProperties(AlpacaProperties.class)
+@EnableConfigurationProperties({AlpacaProperties.class, FinnhubProperties.class})
 public class AppConfig {
 
     @Bean
