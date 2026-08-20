@@ -49,11 +49,6 @@ Alpaca tiene un endpoint para pedir varios símbolos en una sola request, pero h
 
 Si en algún momento se quiere optimizar, valdría la pena probar el endpoint multi-símbolo en código real y confirmar si el bug reportado se reproduce o no — quedó anotado como posible mejora futura, no bloqueante.
 
-## Qué sigue
-
-- **TAI-10**: algoritmo de detección de setups sobre las barras que ya trae `getStockBars`/`getCryptoBars`, usando el universo de `UniverseService.getCurrent()`.
-- **TAI-11**: Spring AI para la explicación en lenguaje simple (reemplaza el `LlmClient` manual del spike).
-
 ## TAI-9: universo dinámico de activos
 
 Endpoints:
@@ -69,6 +64,16 @@ Se recalcula automáticamente **una vez al día, a las 6 AM** (antes de la apert
 - **Cripto (top 30 por default):** con los propios datos de Alpaca — se listan los pares cripto que Alpaca soporta y se rankean por volumen de 24hs usando `getCryptoBars`. No hace falta ninguna fuente externa acá.
 
 **⚠️ El recálculo de acciones tarda ~9-10 minutos.** Con ~500 símbolos del S&P 500 y el límite de 60 req/min de Finnhub, el código pacea las requests a propósito (una cada 1.1 segundos) para no pasarse del límite. Como se corre una vez al día a las 6 AM, esto no es un problema en producción — pero si lo probás manualmente con `POST /universe/refresh`, esperá varios minutos antes de que responda.
+
+**Se persiste en MongoDB Atlas** (colección `universe`, un único documento con `id="current"`). El universo sobrevive a un reinicio del servidor — no hace falta volver a esperar los ~9-10 min cada vez que parás y volvés a levantar la app durante desarrollo. Se guarda automáticamente después de cada refresh (manual o del cron diario) y se recarga solo al arrancar. Solo se recalcula desde cero cuando vos corrés `POST /universe/refresh` o cuando llegan las 6 AM.
+
+**Variable nueva:**
+```bash
+export MONGODB_URI="mongodb+srv://TU_USUARIO:TU_PASSWORD@cluster0.eny5okp.mongodb.net/trading_assistant?appName=Cluster0"
+```
+(Sacá tu usuario/password de la base desde Atlas → Database Access. Notá el nombre de base `trading_assistant` agregado en el path — si no lo ponés, Mongo usa una base por default llamada `test`, mejor ser explícito.)
+
+Si Mongo no está disponible al arrancar (sin internet, URI mal puesta), la app igual levanta — arranca con el universo vacío en memoria hasta el próximo refresh, no se cae.
 
 **Variables nuevas:**
 ```bash
@@ -102,6 +107,24 @@ Es un heurístico simple, no un modelo sofisticado — si más adelante hace fal
 
 **Importante:** si el universo todavía está vacío (no corriste `POST /universe/refresh` ni pasaron las 6 AM del cron), el escaneo programado se salta ese ciclo sin romper nada — para probar esto de una, primero asegurate de tener el universo cargado (ver sección de TAI-9 arriba).
 
+## TAI-11: explicación en lenguaje simple (Spring AI)
+
+Cada setup detectado (TAI-10) se enriquece con una explicación en español generada por LLM, vía Spring AI apuntando a Groq — el mismo proveedor que se usó en el spike de latencia (TAI-5).
+
+**Respuesta de `/setups` y `/setups/scan` ahora incluye:**
+```json
+{
+  "setup": { "symbol": "NVDA", "entryPrice": 180.5, "stopLoss": 175.1, ... },
+  "explanation": "NVIDIA muestra una señal alcista según el cruce de sus medias móviles..."
+}
+```
+
+**Stack:** Spring Boot 3.5.16 + Spring AI 1.1.8 (GA estable) + JDK 21. *(Se evaluó Spring Boot 4.1 + Spring AI 2.0, pero Spring AI 2.0 todavía está en milestone, no en versión estable — se prefirió la combinación GA por sobre estar en la última versión.)*
+
+**Variables:** reusa las mismas `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL` que ya tenías configuradas del spike — no hace falta agregar nada nuevo si ya las tenés en tu `.bashrc`.
+
+**Manejo de errores:** si el LLM falla (rate limit, sin conexión, etc.), el setup detectado NO se pierde — queda con un mensaje de fallback en `explanation`, pero todos los datos técnicos (entry, stop-loss, take-profit) siguen disponibles igual.
+
 ## Qué sigue
 
-- **TAI-11**: Spring AI para la explicación en lenguaje simple — toma un `Setup` de TAI-10 y lo convierte en el mensaje tipo "NVIDIA muestra un patrón alcista...".
+- **TAI-12**: bot de Telegram para avisos inmediatos, usando `ExplainedSetup` como contenido del mensaje.

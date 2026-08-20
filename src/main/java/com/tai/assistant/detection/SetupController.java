@@ -18,15 +18,17 @@ import java.util.Map;
 public class SetupController {
 
     private final SetupDetectionService service;
+    private final SetupExplanationService explanationService;
 
-    public SetupController(SetupDetectionService service) {
+    public SetupController(SetupDetectionService service, SetupExplanationService explanationService) {
         this.service = service;
+        this.explanationService = explanationService;
     }
 
     @GetMapping
     public Map<String, Object> lastSetups() {
         Instant lastScan = service.getLastScanAt();
-        List<Setup> setups = service.getLastSetups();
+        List<ExplainedSetup> setups = service.getLastSetups();
         return Map.of(
                 "lastScanAt", lastScan == null ? "todavía no se escaneó" : lastScan.toString(),
                 "count", setups.size(),
@@ -35,7 +37,27 @@ public class SetupController {
     }
 
     @PostMapping("/scan")
-    public List<Setup> scanNow() {
+    public List<ExplainedSetup> scanNow() {
         return service.scanNow();
+    }
+
+    /**
+     * Endpoint de prueba: genera un Setup de ejemplo con datos inventados y le pide
+     * al LLM que lo explique — sirve para confirmar que Spring AI/Groq funcionan
+     * de punta a punta sin depender de que el análisis técnico encuentre una señal real.
+     */
+    @GetMapping("/test-explanation")
+    public ExplainedSetup testExplanation() {
+        Setup ejemplo = new Setup(
+                "AAPL",
+                Setup.AssetType.STOCK,
+                java.time.Instant.now(),
+                230.50,
+                223.59,
+                244.33,
+                Setup.RiskLevel.MEDIO,
+                "SMA(9) cruzó por encima de SMA(21) — señal alcista (DATOS DE PRUEBA)"
+        );
+        return explanationService.explain(ejemplo);
     }
 }
