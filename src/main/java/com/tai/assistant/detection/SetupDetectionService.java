@@ -32,19 +32,22 @@ public class SetupDetectionService {
     private final UniverseService universeService;
     private final AlpacaMarketDataClient marketDataClient;
     private final TechnicalAnalysisService technicalAnalysisService;
+    private final SetupExplanationService explanationService;
 
-    private final AtomicReference<List<Setup>> lastSetups = new AtomicReference<>(List.of());
+    private final AtomicReference<List<ExplainedSetup>> lastSetups = new AtomicReference<>(List.of());
     private final AtomicReference<Instant> lastScanAt = new AtomicReference<>();
 
     public SetupDetectionService(UniverseService universeService,
                                   AlpacaMarketDataClient marketDataClient,
-                                  TechnicalAnalysisService technicalAnalysisService) {
+                                  TechnicalAnalysisService technicalAnalysisService,
+                                  SetupExplanationService explanationService) {
         this.universeService = universeService;
         this.marketDataClient = marketDataClient;
         this.technicalAnalysisService = technicalAnalysisService;
+        this.explanationService = explanationService;
     }
 
-    public List<Setup> getLastSetups() {
+    public List<ExplainedSetup> getLastSetups() {
         return lastSetups.get();
     }
 
@@ -53,17 +56,17 @@ public class SetupDetectionService {
     }
 
     /** Escanea el universo completo ahora mismo. Se puede disparar manualmente (POST /setups/scan). */
-    public List<Setup> scanNow() {
+    public List<ExplainedSetup> scanNow() {
         AssetUniverse universe = universeService.getCurrent();
-        List<Setup> found = new ArrayList<>();
+        List<ExplainedSetup> found = new ArrayList<>();
 
         for (String symbol : universe.stockSymbols()) {
             scanOne(symbol, Setup.AssetType.STOCK, marketDataClient.getStockBars(symbol, BARS_FOR_ANALYSIS))
-                    .ifPresent(found::add);
+                    .ifPresent(setup -> found.add(explanationService.explain(setup)));
         }
         for (String symbol : universe.cryptoSymbols()) {
             scanOne(symbol, Setup.AssetType.CRYPTO, marketDataClient.getCryptoBars(symbol, BARS_FOR_ANALYSIS))
-                    .ifPresent(found::add);
+                    .ifPresent(setup -> found.add(explanationService.explain(setup)));
         }
 
         lastSetups.set(found);
@@ -93,7 +96,7 @@ public class SetupDetectionService {
             return;
         }
         try {
-            List<Setup> setups = scanNow();
+            List<ExplainedSetup> setups = scanNow();
             System.out.println("[SetupDetectionService] Scan completo: " + setups.size() + " setup(s) detectado(s).");
         } catch (Exception e) {
             System.err.println("[SetupDetectionService] Error en el scan programado: " + e.getMessage());
