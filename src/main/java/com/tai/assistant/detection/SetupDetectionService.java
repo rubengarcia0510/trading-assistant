@@ -2,6 +2,7 @@ package com.tai.assistant.detection;
 
 import com.tai.assistant.market.AlpacaMarketDataClient;
 import com.tai.assistant.market.Bar;
+import com.tai.assistant.notification.TelegramNotifier;
 import com.tai.assistant.universe.AssetUniverse;
 import com.tai.assistant.universe.UniverseService;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -23,6 +24,9 @@ import java.util.concurrent.atomic.AtomicReference;
  * Los setups detectados se guardan en memoria (no hay base de datos todavía —
  * eso queda para cuando se sume persistencia, fuera del alcance de este ticket).
  * Cada scan REEMPLAZA la lista anterior — no se acumula histórico acá.
+ *
+ * Cada setup encontrado dispara automáticamente un aviso por Telegram (TAI-12) —
+ * si el bot no está configurado (TelegramProperties vacías), simplemente se salta el aviso.
  */
 @Service
 public class SetupDetectionService {
@@ -33,6 +37,7 @@ public class SetupDetectionService {
     private final AlpacaMarketDataClient marketDataClient;
     private final TechnicalAnalysisService technicalAnalysisService;
     private final SetupExplanationService explanationService;
+    private final TelegramNotifier telegramNotifier;
 
     private final AtomicReference<List<ExplainedSetup>> lastSetups = new AtomicReference<>(List.of());
     private final AtomicReference<Instant> lastScanAt = new AtomicReference<>();
@@ -40,11 +45,13 @@ public class SetupDetectionService {
     public SetupDetectionService(UniverseService universeService,
                                   AlpacaMarketDataClient marketDataClient,
                                   TechnicalAnalysisService technicalAnalysisService,
-                                  SetupExplanationService explanationService) {
+                                  SetupExplanationService explanationService,
+                                  TelegramNotifier telegramNotifier) {
         this.universeService = universeService;
         this.marketDataClient = marketDataClient;
         this.technicalAnalysisService = technicalAnalysisService;
         this.explanationService = explanationService;
+        this.telegramNotifier = telegramNotifier;
     }
 
     public List<ExplainedSetup> getLastSetups() {
@@ -62,16 +69,30 @@ public class SetupDetectionService {
 
         for (String symbol : universe.stockSymbols()) {
             scanOne(symbol, Setup.AssetType.STOCK, marketDataClient.getStockBars(symbol, BARS_FOR_ANALYSIS))
-                    .ifPresent(setup -> found.add(explanationService.explain(setup)));
+                    .ifPresent(setup -> found.add(explainAndNotify(setup)));
         }
         for (String symbol : universe.cryptoSymbols()) {
             scanOne(symbol, Setup.AssetType.CRYPTO, marketDataClient.getCryptoBars(symbol, BARS_FOR_ANALYSIS))
-                    .ifPresent(setup -> found.add(explanationService.explain(setup)));
+                    .ifPresent(setup -> found.add(explainAndNotify(setup)));
         }
 
         lastSetups.set(found);
         lastScanAt.set(Instant.now());
         return found;
+    }
+
+    private ExplainedSetup explainAndNotify(Setup setup) {
+        ExplainedSetup explained = explanationService.explain(setup);
+        if (telegramNotifier.isConfigured()) {
+            try {
+                telegramNotifier.sendSetupAlert(explained);
+            } catch (Exception e) {
+                // Un aviso que falla no debe hacer perder el setup detectado.
+                System.err.println("[SetupDetectionService] Error mandando aviso de Telegram para "
+                        + setup.symbol() + ": " + e.getMessage());
+            }
+        }
+        return explained;
     }
 
     private java.util.Optional<Setup> scanOne(String symbol, Setup.AssetType type, List<Bar> bars) {
@@ -103,3 +124,4 @@ public class SetupDetectionService {
         }
     }
 }
+
