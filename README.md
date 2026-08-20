@@ -128,3 +128,30 @@ Cada setup detectado (TAI-10) se enriquece con una explicación en español gene
 ## Qué sigue
 
 - **TAI-12**: bot de Telegram para avisos inmediatos, usando `ExplainedSetup` como contenido del mensaje.
+
+## TAI-12: bot de Telegram para avisos inmediatos
+
+Cada setup detectado en un scan (manual o programado) manda automáticamente un mensaje por Telegram, con dos botones inline: **✅ Aprobar** / **❌ Descartar**.
+
+**Cómo funciona:**
+- `TelegramNotifier` arma el mensaje (símbolo, explicación, entry/stop-loss/take-profit, riesgo) y lo manda con `sendMessage` + `reply_markup` (inline keyboard).
+- `TelegramCallbackPoller` escucha (por *long polling*, cada 5 seg — no webhook, ya que la app no tiene una URL pública HTTPS corriendo en el celular) cuándo tocás un botón. Al presionar:
+  - Se registra la decisión en memoria.
+  - Se le saca el "cargando" al botón (`answerCallbackQuery`).
+  - Se edita el mensaje original agregando "✅ Aprobado" o "❌ Descartado", y saca los botones (ya no hace falta elegir de nuevo).
+
+**Importante:** presionar "Aprobar" **no ejecuta ninguna orden** — solo registra la decisión. La ejecución real sigue siendo 100% manual vía `POST /trading/order`, tal como se definió en el Discovery ("sin ejecución automática hasta confiar en el sistema").
+
+**Persistencia de las decisiones:** por ahora solo en memoria (`GET /telegram/decisions`) — guardarlas junto al historial completo de setups es alcance de TAI-15, no de este ticket.
+
+**Variables:** reusa `TELEGRAM_BOT_TOKEN` y `TELEGRAM_CHAT_ID`, las mismas que ya tenías del spike (TAI-5) — no hace falta nada nuevo si ya las tenés en tu `.bashrc`.
+
+Endpoints:
+```
+GET /telegram/decisions   # decisiones recientes (aprobado/descartado)
+```
+
+## Qué sigue
+
+- **TAI-13**: Web Push Notifications desde el frontend.
+- **TAI-14/15**: frontend web (vista de setups + historial).
