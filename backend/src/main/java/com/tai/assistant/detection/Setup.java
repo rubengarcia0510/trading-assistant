@@ -1,11 +1,12 @@
 package com.tai.assistant.detection;
 
 import java.time.Instant;
+import java.util.List;
 
 /**
- * Un setup detectado por el análisis técnico. Estos campos son justamente los que
- * pide el SRS original (RF-03.3): precio de entrada, stop-loss, take-profit, nivel de riesgo.
- * TAI-11 (Spring AI) va a tomar este objeto y convertirlo en la explicación en lenguaje simple.
+ * Un setup detectado por el análisis técnico. recentCloses son los últimos
+ * cierres usados para el análisis — se incluyen para que el frontend pueda
+ * dibujar un sparkline simple sin tener que pedir las barras de nuevo (TAI-14).
  */
 public record Setup(
         String symbol,
@@ -15,7 +16,8 @@ public record Setup(
         double stopLoss,
         double takeProfit,
         RiskLevel riskLevel,
-        String signalDescription
+        String signalDescription,
+        List<Double> recentCloses
 ) {
     public enum AssetType { STOCK, CRYPTO }
 

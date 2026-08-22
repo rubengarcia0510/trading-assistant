@@ -1,1 +1,48 @@
-/* You can add global styles to this file, and also import other style files */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Sora:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg-start: #1b2340;
+  --bg-end: #12182b;
+  --card-bg: #1b2340;
+  --card-border: #2a335c;
+  --mint: #7fe0c0;
+  --gold: #f2c14e;
+  --coral: #e8604c;
+  --cream: #f4f1e6;
+  --muted: #8c93b8;
+
+  --font-display: 'Fraunces', serif;
+  --font-body: 'Sora', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background: linear-gradient(165deg, var(--bg-start) 0%, var(--bg-end) 60%);
+  color: var(--cream);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: var(--font-body);
+}
+
+/* Accesibilidad: foco visible siempre, sin importar el navegador */
+:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

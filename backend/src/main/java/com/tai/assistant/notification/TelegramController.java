@@ -6,19 +6,18 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-/** GET /telegram/decisions -> decisiones recientes (aprobado/descartado) tomadas desde el bot. */
 @RestController
 @RequestMapping("/telegram")
 public class TelegramController {
 
-    private final TelegramCallbackPoller poller;
+    private final DecisionStore decisionStore;
 
-    public TelegramController(TelegramCallbackPoller poller) {
-        this.poller = poller;
+    public TelegramController(DecisionStore decisionStore) {
+        this.decisionStore = decisionStore;
     }
 
     @GetMapping("/decisions")
     public List<SetupDecision> decisions() {
-        return poller.getRecentDecisions();
+        return decisionStore.getRecent();
     }
 }

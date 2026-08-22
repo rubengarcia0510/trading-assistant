@@ -1,0 +1,74 @@
+<header class="topbar">
+  <span class="brand">Trading Assistant</span>
+  <button class="icon-btn" (click)="logout()" aria-label="Salir">⎋</button>
+</header>
+
+<main>
+  <section class="pending-section">
+    <div class="section-head">
+      <span class="eyebrow">Pendientes</span>
+      @if (pendingSetups().length) {
+        <span class="count">{{ pendingSetups().length }}</span>
+      }
+      <button class="scan-btn" (click)="scanNow()" [disabled]="scanning()">
+        {{ scanning() ? 'Escaneando…' : 'Escanear ahora' }}
+      </button>
+      <button class="scan-btn test-btn" (click)="testMock()">Probar ejemplo</button>
+    </div>
+
+    <p class="last-scan">Último escaneo: {{ lastScanAt() }}</p>
+
+    @if (loading()) {
+      <p class="hint">Cargando…</p>
+    } @else if (pendingSetups().length === 0) {
+      <p class="hint">Sin pendientes. Los avisos también te llegan por Telegram.</p>
+    } @else {
+      @for (item of pendingSetups(); track item.setup.symbol + item.setup.detectedAt) {
+        <article class="setup-card" [class.leaving]="isLeaving(item.setup.symbol)">
+          <div class="card-top">
+            <span class="symbol">{{ item.setup.symbol }}</span>
+            <span class="risk-badge" [class]="'risk-' + item.setup.riskLevel.toLowerCase()">
+              {{ item.setup.riskLevel }}
+            </span>
+          </div>
+
+          <app-sparkline [values]="item.setup.recentCloses" [color]="'#7fe0c0'" />
+
+          <p class="explanation">{{ item.explanation }}</p>
+
+          <div class="prices">
+            <span>Entrada <b>{{ item.setup.entryPrice | currency }}</b></span>
+            <span>Stop <b>{{ item.setup.stopLoss | currency }}</b></span>
+            <span>Take <b>{{ item.setup.takeProfit | currency }}</b></span>
+          </div>
+
+          <div class="decision-buttons">
+            <button class="approve" (click)="decide(item.setup.symbol, 'approve')">Aprobar</button>
+            <button class="discard" (click)="decide(item.setup.symbol, 'discard')">Descartar</button>
+          </div>
+        </article>
+      }
+    }
+  </section>
+
+  <section class="decided-section">
+    <span class="eyebrow muted">Decididos</span>
+
+    @if (decidedItems().length === 0) {
+      <p class="hint muted">Todavía no tomaste ninguna decisión.</p>
+    } @else {
+      <ul class="decided-list">
+        @for (d of decidedItems(); track d.symbol + d.decidedAt) {
+          <li>
+            <span class="decided-symbol">{{ d.symbol }}</span>
+            <span class="decided-mark" [class.approve]="d.decision === 'approve'" [class.discard]="d.decision === 'discard'">
+              {{ d.decision === 'approve' ? '✅' : '❌' }}
+            </span>
+            <span class="decided-date">{{ d.decidedAt | date: 'short' }}</span>
+            <span class="decided-source">{{ d.source === 'telegram' ? 'Telegram' : 'Web' }}</span>
+          </li>
+        }
+      </ul>
+    }
+  </section>
+</main>

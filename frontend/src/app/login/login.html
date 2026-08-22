@@ -1,0 +1,23 @@
+<div class="login-container">
+  <form class="login-card" (ngSubmit)="onSubmit()">
+    <h1>Trading Assistant IA</h1>
+
+    <label>
+      Usuario
+      <input type="text" name="username" [(ngModel)]="username" autocomplete="username" required />
+    </label>
+
+    <label>
+      Contraseña
+      <input type="password" name="password" [(ngModel)]="password" autocomplete="current-password" required />
+    </label>
+
+    @if (errorMessage()) {
+      <p class="error">{{ errorMessage() }}</p>
+    }
+
+    <button type="submit" [disabled]="loading()">
+      {{ loading() ? 'Entrando...' : 'Entrar' }}
+    </button>
+  </form>
+</div>
