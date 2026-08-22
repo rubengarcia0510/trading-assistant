@@ -2,7 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { AuthService } from '../core/auth.service';
-import { Decision, ExplainedSetup, SetupsService } from '../core/setups.service';
+import { ExplainedSetup, HistoryEntry, SetupsService } from '../core/setups.service';
 import { Sparkline } from '../shared/sparkline';
 
 @Component({
@@ -18,11 +18,10 @@ export class Setups {
   private router = inject(Router);
 
   pendingSetups = signal<ExplainedSetup[]>([]);
-  decidedItems = signal<Decision[]>([]);
+  decidedItems = signal<HistoryEntry[]>([]);
   lastScanAt = signal<string>('');
   loading = signal(false);
   scanning = signal(false);
-  /** Símbolo que está en pleno traspaso visual de Pendientes -> Decididos, para animarlo. */
   leavingSymbol = signal<string | null>(null);
 
   ngOnInit(): void {
@@ -34,13 +33,11 @@ export class Setups {
     this.setupsService.getLastSetups().subscribe({
       next: (res) => {
         this.lastScanAt.set(res.lastScanAt);
-        this.setupsService.getDecisions().subscribe({
-          next: (decisions) => {
-            const decidedSymbols = new Set(decisions.map((d) => d.symbol));
+        this.setupsService.getRecentHistory(20).subscribe({
+          next: (page) => {
+            const decidedSymbols = new Set(page.content.map((d) => d.symbol));
             this.pendingSetups.set(res.setups.filter((s) => !decidedSymbols.has(s.setup.symbol)));
-            this.decidedItems.set(
-              [...decisions].sort((a, b) => (a.decidedAt < b.decidedAt ? 1 : -1))
-            );
+            this.decidedItems.set(page.content);
             this.loading.set(false);
           },
           error: () => {
@@ -64,7 +61,6 @@ export class Setups {
     });
   }
 
-  /** Solo para ver el diseño de la card sin depender de una señal real del mercado. */
   testMock(): void {
     this.setupsService.testExplanation().subscribe((res) => {
       this.pendingSetups.update((list) => [res.explainedSetup, ...list]);
@@ -73,16 +69,13 @@ export class Setups {
 
   decide(symbol: string, decision: 'approve' | 'discard'): void {
     this.setupsService.registerDecision(symbol, decision).subscribe(() => {
-      // Signature element: la card se marca como "saliendo" (dispara la animación en CSS),
-      // y recién después de que termine la transición se saca de Pendientes y se agrega a Decididos.
       this.leavingSymbol.set(symbol);
 
       setTimeout(() => {
         this.pendingSetups.update((list) => list.filter((s) => s.setup.symbol !== symbol));
-        this.decidedItems.update((list) => [
-          { symbol, decision, decidedAt: new Date().toISOString(), source: 'web' },
-          ...list,
-        ]);
+        // Recargamos el historial real en vez de simularlo a mano — así queda
+        // consistente con lo que realmente se guardó en Mongo.
+        this.setupsService.getRecentHistory(20).subscribe((page) => this.decidedItems.set(page.content));
         this.leavingSymbol.set(null);
       }, 350);
     });
@@ -90,6 +83,10 @@ export class Setups {
 
   isLeaving(symbol: string): boolean {
     return this.leavingSymbol() === symbol;
+  }
+
+  goToHistory(): void {
+    this.router.navigate(['/history']);
   }
 
   logout(): void {

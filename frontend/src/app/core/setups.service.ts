@@ -26,11 +26,34 @@ interface SetupsResponse {
   setups: ExplainedSetup[];
 }
 
-export interface Decision {
+export interface HistoryEntry {
+  id: string;
   symbol: string;
+  assetType: 'STOCK' | 'CRYPTO';
+  entryPrice: number;
+  stopLoss: number;
+  takeProfit: number;
+  riskLevel: 'BAJO' | 'MEDIO' | 'ALTO';
+  explanation: string;
+  detectedAt: string | null;
   decision: 'approve' | 'discard';
   decidedAt: string;
-  source: 'telegram' | 'web';
+  source: 'web' | 'telegram';
+}
+
+export interface PageResult<T> {
+  content: T[];
+  totalElements: number;
+  page: number;
+  size: number;
+}
+
+export interface HistoryFilters {
+  symbol?: string;
+  from?: string; // ISO datetime
+  to?: string;   // ISO datetime
+  page?: number;
+  size?: number;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -49,11 +72,25 @@ export class SetupsService {
     return this.http.post<{ status: string }>(`${API_URL}/setups/decision`, { symbol, decision });
   }
 
-  getDecisions(): Observable<Decision[]> {
-    return this.http.get<Decision[]>(`${API_URL}/telegram/decisions`);
-  }
-
   testExplanation(): Observable<{ explainedSetup: ExplainedSetup }> {
     return this.http.get<{ explainedSetup: ExplainedSetup }>(`${API_URL}/setups/test-explanation`);
+  }
+
+  /** Últimas decisiones, sin filtros — para el resumen del dashboard (TAI-14). */
+  getRecentHistory(size = 20): Observable<PageResult<HistoryEntry>> {
+    return this.http.get<PageResult<HistoryEntry>>(`${API_URL}/history`, { params: { size } });
+  }
+
+  /** Búsqueda con filtros combinables — la vista de historial completa (TAI-15). */
+  searchHistory(filters: HistoryFilters): Observable<PageResult<HistoryEntry>> {
+    let params: Record<string, string | number> = {
+      page: filters.page ?? 0,
+      size: filters.size ?? 20,
+    };
+    if (filters.symbol) params['symbol'] = filters.symbol;
+    if (filters.from) params['from'] = filters.from;
+    if (filters.to) params['to'] = filters.to;
+
+    return this.http.get<PageResult<HistoryEntry>>(`${API_URL}/history`, { params });
   }
 }

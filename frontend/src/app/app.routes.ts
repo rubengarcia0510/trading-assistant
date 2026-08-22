@@ -12,5 +12,10 @@ export const routes: Routes = [
     loadComponent: () => import('./setups/setups').then((m) => m.Setups),
     canActivate: [authGuard],
   },
+  {
+    path: 'history',
+    loadComponent: () => import('./history/history').then((m) => m.History),
+    canActivate: [authGuard],
+  },
   { path: '**', redirectTo: 'login' },
 ];

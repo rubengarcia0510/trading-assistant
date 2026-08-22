@@ -28,6 +28,11 @@
   }
 }
 
+.topbar-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
 main {
   padding: 0 1rem;
 }

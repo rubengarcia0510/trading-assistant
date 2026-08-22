@@ -1,0 +1,76 @@
+<header class="topbar">
+  <button class="icon-btn" (click)="goBack()" aria-label="Volver">←</button>
+  <span class="brand">Historial</span>
+  <span class="spacer"></span>
+</header>
+
+<main>
+  <form class="filters" (ngSubmit)="search()">
+    <label>
+      Activo
+      <input type="text" placeholder="Ej: AAPL" [(ngModel)]="symbolFilter" name="symbol" />
+    </label>
+
+    <div class="date-range">
+      <label>
+        Desde
+        <input type="date" [(ngModel)]="fromFilter" name="from" />
+      </label>
+      <label>
+        Hasta
+        <input type="date" [(ngModel)]="toFilter" name="to" />
+      </label>
+    </div>
+
+    <div class="filter-actions">
+      <button type="submit" class="apply-btn">Filtrar</button>
+      <button type="button" class="clear-btn" (click)="clearFilters()">Limpiar</button>
+    </div>
+  </form>
+
+  @switch (state()) {
+    @case ('loading') {
+      @if (entries().length === 0) {
+        <p class="hint">Cargando…</p>
+      }
+    }
+    @case ('error') {
+      <p class="hint error">Ocurrió un error al consultar el historial. Probá de nuevo.</p>
+    }
+    @case ('empty') {
+      <p class="hint">No hay resultados para estos filtros.</p>
+    }
+  }
+
+  @if (entries().length > 0) {
+    <ul class="history-list">
+      @for (entry of entries(); track entry.id) {
+        <li class="history-item">
+          <div class="row-top">
+            <span class="symbol">{{ entry.symbol }}</span>
+            <span class="decision-mark" [class.approve]="entry.decision === 'approve'" [class.discard]="entry.decision === 'discard'">
+              {{ entry.decision === 'approve' ? '✅ Aprobado' : '❌ Descartado' }}
+            </span>
+          </div>
+
+          <p class="explanation">{{ entry.explanation }}</p>
+
+          <div class="row-meta">
+            <span>Entrada {{ entry.entryPrice | currency }}</span>
+            @if (entry.detectedAt) {
+              <span>Detectado {{ entry.detectedAt | date: 'short' }}</span>
+            }
+            <span>Decidido {{ entry.decidedAt | date: 'short' }}</span>
+            <span class="source">{{ entry.source === 'telegram' ? 'Telegram' : 'Web' }}</span>
+          </div>
+        </li>
+      }
+    </ul>
+
+    @if (hasMore()) {
+      <button class="load-more-btn" (click)="loadMore()" [disabled]="state() === 'loading'">
+        {{ state() === 'loading' ? 'Cargando…' : 'Cargar más' }}
+      </button>
+    }
+  }
+</main>

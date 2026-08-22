@@ -1,5 +1,6 @@
 package com.tai.assistant.detection;
 
+import com.tai.assistant.history.HistoryService;
 import com.tai.assistant.market.AlpacaMarketDataClient;
 import com.tai.assistant.market.Bar;
 import com.tai.assistant.notification.TelegramNotifier;
@@ -15,29 +16,20 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Escanea el universo completo (acciones + cripto de UniverseService) buscando setups.
- *
- * Frecuencia: cada 3 minutos por default (ver TAI-7 en 07-discovery-personal.md) —
- * con ~160 símbolos y una request por símbolo, esto entra cómodo en el límite
- * de 200 requests/minuto de Alpaca, incluso sin necesitar el endpoint multi-símbolo
- * (que resultó poco confiable).
- *
- * Los setups detectados se guardan en memoria (no hay base de datos todavía —
- * eso queda para cuando se sume persistencia, fuera del alcance de este ticket).
- * Cada scan REEMPLAZA la lista anterior — no se acumula histórico acá.
- *
- * Cada setup encontrado dispara automáticamente un aviso por Telegram (TAI-12) —
- * si el bot no está configurado (TelegramProperties vacías), simplemente se salta el aviso.
+ * Cada setup encontrado: se explica con IA, se manda por Telegram, y se persiste
+ * en el historial (TAI-15) como PENDIENTE — hasta que se apruebe/descarte.
  */
 @Service
 public class SetupDetectionService {
 
-    private static final int BARS_FOR_ANALYSIS = 30; // suficiente para SMA(21) + margen
+    private static final int BARS_FOR_ANALYSIS = 30;
 
     private final UniverseService universeService;
     private final AlpacaMarketDataClient marketDataClient;
     private final TechnicalAnalysisService technicalAnalysisService;
     private final SetupExplanationService explanationService;
     private final TelegramNotifier telegramNotifier;
+    private final HistoryService historyService;
 
     private final AtomicReference<List<ExplainedSetup>> lastSetups = new AtomicReference<>(List.of());
     private final AtomicReference<Instant> lastScanAt = new AtomicReference<>();
@@ -46,12 +38,14 @@ public class SetupDetectionService {
                                   AlpacaMarketDataClient marketDataClient,
                                   TechnicalAnalysisService technicalAnalysisService,
                                   SetupExplanationService explanationService,
-                                  TelegramNotifier telegramNotifier) {
+                                  TelegramNotifier telegramNotifier,
+                                  HistoryService historyService) {
         this.universeService = universeService;
         this.marketDataClient = marketDataClient;
         this.technicalAnalysisService = technicalAnalysisService;
         this.explanationService = explanationService;
         this.telegramNotifier = telegramNotifier;
+        this.historyService = historyService;
     }
 
     public List<ExplainedSetup> getLastSetups() {
@@ -62,18 +56,17 @@ public class SetupDetectionService {
         return lastScanAt.get();
     }
 
-    /** Escanea el universo completo ahora mismo. Se puede disparar manualmente (POST /setups/scan). */
     public List<ExplainedSetup> scanNow() {
         AssetUniverse universe = universeService.getCurrent();
         List<ExplainedSetup> found = new ArrayList<>();
 
         for (String symbol : universe.stockSymbols()) {
             scanOne(symbol, Setup.AssetType.STOCK, marketDataClient.getStockBars(symbol, BARS_FOR_ANALYSIS))
-                    .ifPresent(setup -> found.add(explainAndNotify(setup)));
+                    .ifPresent(setup -> found.add(explainNotifyAndRecord(setup)));
         }
         for (String symbol : universe.cryptoSymbols()) {
             scanOne(symbol, Setup.AssetType.CRYPTO, marketDataClient.getCryptoBars(symbol, BARS_FOR_ANALYSIS))
-                    .ifPresent(setup -> found.add(explainAndNotify(setup)));
+                    .ifPresent(setup -> found.add(explainNotifyAndRecord(setup)));
         }
 
         lastSetups.set(found);
@@ -81,13 +74,20 @@ public class SetupDetectionService {
         return found;
     }
 
-    private ExplainedSetup explainAndNotify(Setup setup) {
+    private ExplainedSetup explainNotifyAndRecord(Setup setup) {
         ExplainedSetup explained = explanationService.explain(setup);
+
+        try {
+            historyService.recordDetection(explained);
+        } catch (Exception e) {
+            // No persistir no debería tirar abajo la detección ni el aviso.
+            System.err.println("[SetupDetectionService] Error guardando en historial " + setup.symbol() + ": " + e.getMessage());
+        }
+
         if (telegramNotifier.isConfigured()) {
             try {
                 telegramNotifier.sendSetupAlert(explained);
             } catch (Exception e) {
-                // Un aviso que falla no debe hacer perder el setup detectado.
                 System.err.println("[SetupDetectionService] Error mandando aviso de Telegram para "
                         + setup.symbol() + ": " + e.getMessage());
             }
@@ -104,11 +104,6 @@ public class SetupDetectionService {
         }
     }
 
-    /**
-     * Cada 3 minutos (180.000 ms), con 1 minuto de delay inicial para no arrancar
-     * a escanear antes de que el universo tenga datos la primera vez que levanta la app.
-     * Configurable con tai.detection.scan-interval-ms.
-     */
     @Scheduled(fixedRateString = "${tai.detection.scan-interval-ms:180000}",
                initialDelayString = "${tai.detection.initial-delay-ms:60000}")
     public void scheduledScan() {
@@ -124,4 +119,3 @@ public class SetupDetectionService {
         }
     }
 }
-

@@ -3,6 +3,7 @@ package com.tai.assistant.notification;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tai.assistant.config.TelegramProperties;
+import com.tai.assistant.history.HistoryService;
 import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -16,22 +17,22 @@ import java.util.concurrent.atomic.AtomicLong;
  * Usa long polling (GET .../getUpdates) en vez de webhook — no hace falta
  * una URL pública HTTPS para una app corriendo en el celular.
  *
- * Las decisiones se guardan en DecisionStore, compartido con el frontend web (TAI-14).
+ * Las decisiones se persisten en HistoryService (Mongo) — TAI-15.
  */
 @Component
 public class TelegramCallbackPoller {
 
     private final RestClient restClient;
     private final TelegramProperties props;
-    private final DecisionStore decisionStore;
+    private final HistoryService historyService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private final AtomicLong lastUpdateId = new AtomicLong(0);
 
-    public TelegramCallbackPoller(RestClient restClient, TelegramProperties props, DecisionStore decisionStore) {
+    public TelegramCallbackPoller(RestClient restClient, TelegramProperties props, HistoryService historyService) {
         this.restClient = restClient;
         this.props = props;
-        this.decisionStore = decisionStore;
+        this.historyService = historyService;
     }
 
     @Scheduled(fixedDelayString = "${tai.telegram.poll-interval-ms:5000}")
@@ -69,7 +70,7 @@ public class TelegramCallbackPoller {
         String symbol = parts[1];
         String decisionLabel = action.equals("approve") ? "✅ Aprobado" : "❌ Descartado";
 
-        decisionStore.add(symbol, action, "telegram");
+        historyService.recordDecision(symbol, action, "telegram");
         System.out.println("[TelegramCallbackPoller] Decisión registrada: " + symbol + " -> " + action);
 
         answerCallbackQuery(callbackQueryId, decisionLabel);

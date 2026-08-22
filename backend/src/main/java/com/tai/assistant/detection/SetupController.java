@@ -1,6 +1,6 @@
 package com.tai.assistant.detection;
 
-import com.tai.assistant.notification.DecisionStore;
+import com.tai.assistant.history.HistoryService;
 import com.tai.assistant.notification.TelegramNotifier;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,14 +20,14 @@ public class SetupController {
     private final SetupDetectionService service;
     private final SetupExplanationService explanationService;
     private final TelegramNotifier telegramNotifier;
-    private final DecisionStore decisionStore;
+    private final HistoryService historyService;
 
     public SetupController(SetupDetectionService service, SetupExplanationService explanationService,
-                            TelegramNotifier telegramNotifier, DecisionStore decisionStore) {
+                            TelegramNotifier telegramNotifier, HistoryService historyService) {
         this.service = service;
         this.explanationService = explanationService;
         this.telegramNotifier = telegramNotifier;
-        this.decisionStore = decisionStore;
+        this.historyService = historyService;
     }
 
     @GetMapping
@@ -49,15 +49,13 @@ public class SetupController {
     /** Body: {"symbol": "AAPL", "decision": "approve"} (o "discard"). */
     @PostMapping("/decision")
     public Map<String, String> registerDecision(@RequestBody Map<String, String> body) {
-        String symbol = body.get("symbol");
-        String decision = body.get("decision");
-        decisionStore.add(symbol, decision, "web");
+        historyService.recordDecision(body.get("symbol"), body.get("decision"), "web");
         return Map.of("status", "ok");
     }
 
     /**
-     * Endpoint de prueba: genera un Setup de ejemplo con datos inventados, le pide
-     * al LLM que lo explique, Y manda el aviso por Telegram — sirve para confirmar
+     * Endpoint de prueba: genera un Setup de ejemplo, lo explica, lo persiste en el
+     * historial como pendiente, y manda el aviso por Telegram — sirve para confirmar
      * que TODO el pipeline funciona sin depender de una señal real.
      */
     @GetMapping("/test-explanation")
@@ -74,6 +72,12 @@ public class SetupController {
                 List.of(225.1, 226.4, 224.8, 227.2, 228.0, 229.5, 227.8, 230.1, 229.0, 230.5)
         );
         ExplainedSetup explained = explanationService.explain(ejemplo);
+
+        try {
+            historyService.recordDetection(explained);
+        } catch (Exception e) {
+            System.err.println("[SetupController] Error guardando el setup de prueba en el historial: " + e.getMessage());
+        }
 
         boolean telegramSent = false;
         String telegramError = null;

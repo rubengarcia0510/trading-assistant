@@ -1,6 +1,9 @@
 <header class="topbar">
   <span class="brand">Trading Assistant</span>
-  <button class="icon-btn" (click)="logout()" aria-label="Salir">⎋</button>
+  <div class="topbar-actions">
+    <button class="icon-btn" (click)="goToHistory()" aria-label="Ver historial completo">🕘</button>
+    <button class="icon-btn" (click)="logout()" aria-label="Salir">⎋</button>
+  </div>
 </header>
 
 <main>
