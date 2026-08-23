@@ -3,12 +3,13 @@ package com.tai.assistant.notification;
 import com.tai.assistant.detection.ExplainedSetup;
 import com.tai.assistant.detection.Setup;
 import nl.martijndwars.webpush.PushService;
+import org.apache.http.HttpResponse;
+import org.apache.http.StatusLine;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.net.http.HttpResponse;
 import java.util.List;
 
 import static org.mockito.Mockito.*;
@@ -23,7 +24,10 @@ class WebPushServiceSendTest {
     PushService pushService;
 
     @Mock
-    HttpResponse<byte[]> httpResponse;
+    HttpResponse httpResponse;
+
+    @Mock
+    StatusLine statusLine;
 
     @Test
     void testSendSetupAlertSendsToAllSubscriptionsWhenConfiguredAndKeepsOn201() throws Exception {
@@ -39,7 +43,8 @@ class WebPushServiceSendTest {
 
         when(repository.findAll()).thenReturn(List.of(s1));
         when(pushService.send(any())).thenReturn(httpResponse);
-        when(httpResponse.statusCode()).thenReturn(201);
+        when(httpResponse.getStatusLine()).thenReturn(statusLine);
+        when(statusLine.getStatusCode()).thenReturn(201);
 
         WebPushService svc = new WebPushService(props, repository, pushService);
 
@@ -47,7 +52,7 @@ class WebPushServiceSendTest {
         Setup setup = mock(Setup.class);
         when(setup.symbol()).thenReturn("AAPL");
         when(explained.setup()).thenReturn(setup);
-        when(explained.summary()).thenReturn("summary");
+        when(explained.explanation()).thenReturn("summary");
 
         svc.sendSetupAlert(explained);
 
@@ -69,7 +74,8 @@ class WebPushServiceSendTest {
 
         when(repository.findAll()).thenReturn(List.of(s1));
         when(pushService.send(any())).thenReturn(httpResponse);
-        when(httpResponse.statusCode()).thenReturn(410);
+        when(httpResponse.getStatusLine()).thenReturn(statusLine);
+        when(statusLine.getStatusCode()).thenReturn(410);
 
         WebPushService svc = new WebPushService(props, repository, pushService);
 
@@ -77,7 +83,7 @@ class WebPushServiceSendTest {
         Setup setup = mock(Setup.class);
         when(setup.symbol()).thenReturn("AAPL");
         when(explained.setup()).thenReturn(setup);
-        when(explained.summary()).thenReturn("summary");
+        when(explained.explanation()).thenReturn("summary");
 
         svc.sendSetupAlert(explained);
 
@@ -106,7 +112,7 @@ class WebPushServiceSendTest {
         Setup setup = mock(Setup.class);
         when(setup.symbol()).thenReturn("AAPL");
         when(explained.setup()).thenReturn(setup);
-        when(explained.summary()).thenReturn("summary");
+        when(explained.explanation()).thenReturn("summary");
 
         svc.sendSetupAlert(explained);
 
