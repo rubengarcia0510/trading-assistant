@@ -30,7 +30,6 @@ class WebPushServiceSendTest {
     @Mock
     StatusLine statusLine;
 
-    @Disabled("flaky — TAI-13 web-push")
     @Test
     void testSendSetupAlertSendsToAllSubscriptionsWhenConfiguredAndKeepsOn201() throws Exception {
         WebPushProperties props = new WebPushProperties();
