@@ -75,6 +75,13 @@
             <version>5.1.2</version>
         </dependency>
 
+        <!-- Apache HttpClient required by web-push implementation -->
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+            <version>4.5.14</version>
+        </dependency>
+
         <!-- BouncyCastle crypto provider required by some environments for WebPush -->
         <dependency>
             <groupId>org.bouncycastle</groupId>
