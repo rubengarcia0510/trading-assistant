@@ -18,7 +18,7 @@ class WebPushServiceTest {
     WebPushSubscriptionRepository repository;
 
     @Test
-    void sendSetupAlert_skipsWhenNotConfigured() throws GeneralSecurityException {
+    void testSendSetupAlertSkipsWhenNotConfigured() throws GeneralSecurityException {
         // WebPushProperties without keys -> isConfigured() == false
         WebPushProperties props = new WebPushProperties();
         WebPushService svc = new WebPushService(props, repository);
