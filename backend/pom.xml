@@ -89,6 +89,15 @@
             <version>1.70</version>
         </dependency>
 
+        <!-- jose4j: dependencia transitiva de web-push (firma el JWT de VAPID).
+             Declarada explícita porque no se resolvió por transitividad
+             (faltaba por completo, no era un tema de caché). -->
+        <dependency>
+            <groupId>org.bitbucket.b_c</groupId>
+            <artifactId>jose4j</artifactId>
+            <version>0.9.6</version>
+        </dependency>
+
         <!-- Mockito inline to allow mocking of final classes in unit tests -->
         <dependency>
             <groupId>org.mockito</groupId>
