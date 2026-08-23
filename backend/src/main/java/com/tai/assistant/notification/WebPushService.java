@@ -1,6 +1,7 @@
 package com.tai.assistant.notification;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tai.assistant.detection.ExplainedSetup;
 import nl.martijndwars.webpush.Notification;
 import nl.martijndwars.webpush.PushService;
 import nl.martijndwars.webpush.Subscription;
