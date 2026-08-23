@@ -27,18 +27,26 @@ public class WebPushService {
     private final PushService pushService;
 
     public WebPushService(WebPushProperties properties, WebPushSubscriptionRepository repository) throws GeneralSecurityException {
+        this(properties, repository, createPushServiceIfConfigured(properties));
+    }
+
+    // Test-friendly constructor to inject a mock PushService
+    public WebPushService(WebPushProperties properties, WebPushSubscriptionRepository repository, PushService pushService) {
         this.properties = properties;
         this.repository = repository;
-        Security.addProvider(new BouncyCastleProvider());
+        this.pushService = pushService;
+    }
 
-        if (isConfigured()) {
-            this.pushService = new PushService(
+    private static PushService createPushServiceIfConfigured(WebPushProperties properties) throws GeneralSecurityException {
+        Security.addProvider(new BouncyCastleProvider());
+        if (properties.getPublicKey() != null && !properties.getPublicKey().isBlank()
+                && properties.getPrivateKey() != null && !properties.getPrivateKey().isBlank()) {
+            return new PushService(
                     Utils.loadVapidPrivateKey(properties.getPrivateKey()),
                     properties.getPublicKey(),
                     properties.getSubject());
-        } else {
-            this.pushService = null;
         }
+        return null;
     }
 
     public boolean isConfigured() {
