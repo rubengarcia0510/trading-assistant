@@ -115,19 +115,17 @@ public class WebPushService {
                         Constructor<Notification> c2 = Notification.class.getConstructor(Subscription.class, String.class);
                         notificationObj = c2.newInstance(sub, payload);
                     } catch (NoSuchMethodException ex) {
-                        // Last resort: try (Subscription, byte[], Map) or default
+                        // Last resort: use any available constructor
                         Constructor<?>[] ctors = Notification.class.getConstructors();
                         if (ctors.length > 0) {
-                            // try to use first ctor by converting payload to String when appropriate
                             Constructor<?> any = ctors[0];
                             Class<?>[] params = any.getParameterTypes();
-                            Object arg = payload;
                             if (params.length >= 2 && params[1].isArray() && params[1].getComponentType() == byte.class) {
-                                arg = payload.getBytes();
-                                notificationObj = any.newInstance(sub, arg);
+                                notificationObj = any.newInstance(sub, payload.getBytes());
                             } else if (params.length >= 2) {
                                 notificationObj = any.newInstance(sub, payload);
                             } else {
+                                // Fallback to a normal constructor that may exist
                                 notificationObj = new Notification(sub, payload);
                             }
                         } else {
@@ -141,7 +139,7 @@ public class WebPushService {
 
                 int status = -1;
                 if (resp != null) {
-                    // Try resp.statusCode()
+                    // Try java.net.http.HttpResponse.statusCode()
                     try {
                         Method m = resp.getClass().getMethod("statusCode");
                         Object sc = m.invoke(resp);
@@ -161,7 +159,7 @@ public class WebPushService {
                         }
                     }
 
-                    // Try method getStatusCode()
+                    // Try getStatusCode()
                     if (status == -1) {
                         try {
                             Method getStatusCode = resp.getClass().getMethod("getStatusCode");
