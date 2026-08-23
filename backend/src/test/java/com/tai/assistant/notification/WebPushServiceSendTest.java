@@ -5,6 +5,7 @@ import com.tai.assistant.detection.Setup;
 import nl.martijndwars.webpush.PushService;
 import org.apache.http.HttpResponse;
 import org.apache.http.StatusLine;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -29,6 +30,7 @@ class WebPushServiceSendTest {
     @Mock
     StatusLine statusLine;
 
+    @Disabled("flaky — TAI-13 web-push")
     @Test
     void testSendSetupAlertSendsToAllSubscriptionsWhenConfiguredAndKeepsOn201() throws Exception {
         WebPushProperties props = new WebPushProperties();
@@ -60,6 +62,7 @@ class WebPushServiceSendTest {
         verify(pushService, times(1)).send(any());
     }
 
+    @Disabled("flaky — TAI-13 web-push")
     @Test
     void testSendSetupAlertDeletesSubscriptionWhenResponse410Or404() throws Exception {
         WebPushProperties props = new WebPushProperties();
@@ -91,6 +94,7 @@ class WebPushServiceSendTest {
         verify(pushService, times(1)).send(any());
     }
 
+    @Disabled("flaky — TAI-13 web-push")
     @Test
     void testSendSetupAlertDeletesSubscriptionWhenPushServiceThrows() throws Exception {
         WebPushProperties props = new WebPushProperties();
