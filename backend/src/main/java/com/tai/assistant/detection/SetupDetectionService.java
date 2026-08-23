@@ -4,6 +4,7 @@ import com.tai.assistant.history.HistoryService;
 import com.tai.assistant.market.AlpacaMarketDataClient;
 import com.tai.assistant.market.Bar;
 import com.tai.assistant.notification.TelegramNotifier;
+import com.tai.assistant.notification.WebPushService;
 import com.tai.assistant.universe.AssetUniverse;
 import com.tai.assistant.universe.UniverseService;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -30,6 +31,7 @@ public class SetupDetectionService {
     private final SetupExplanationService explanationService;
     private final TelegramNotifier telegramNotifier;
     private final HistoryService historyService;
+    private final WebPushService webPushService;
 
     private final AtomicReference<List<ExplainedSetup>> lastSetups = new AtomicReference<>(List.of());
     private final AtomicReference<Instant> lastScanAt = new AtomicReference<>();
@@ -39,13 +41,15 @@ public class SetupDetectionService {
                                   TechnicalAnalysisService technicalAnalysisService,
                                   SetupExplanationService explanationService,
                                   TelegramNotifier telegramNotifier,
-                                  HistoryService historyService) {
+                                  HistoryService historyService,
+                                  WebPushService webPushService) {
         this.universeService = universeService;
         this.marketDataClient = marketDataClient;
         this.technicalAnalysisService = technicalAnalysisService;
         this.explanationService = explanationService;
         this.telegramNotifier = telegramNotifier;
         this.historyService = historyService;
+        this.webPushService = webPushService;
     }
 
     public List<ExplainedSetup> getLastSetups() {
@@ -89,6 +93,15 @@ public class SetupDetectionService {
                 telegramNotifier.sendSetupAlert(explained);
             } catch (Exception e) {
                 System.err.println("[SetupDetectionService] Error mandando aviso de Telegram para "
+                        + setup.symbol() + ": " + e.getMessage());
+            }
+        }
+
+        if (webPushService != null && webPushService.isConfigured()) {
+            try {
+                webPushService.sendSetupAlert(explained);
+            } catch (Exception e) {
+                System.err.println("[SetupDetectionService] Error mandando aviso WebPush para "
                         + setup.symbol() + ": " + e.getMessage());
             }
         }
