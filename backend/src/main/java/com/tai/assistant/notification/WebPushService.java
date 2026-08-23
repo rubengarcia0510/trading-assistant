@@ -3,17 +3,14 @@ package com.tai.assistant.notification;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tai.assistant.detection.ExplainedSetup;
 import nl.martijndwars.webpush.Notification;
-import nl.martijndwars.webpush.PushService;
 import nl.martijndwars.webpush.Subscription;
 import org.apache.http.HttpResponse;
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.security.GeneralSecurityException;
-import java.security.Security;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class WebPushService {
@@ -22,40 +19,23 @@ public class WebPushService {
 
     private final WebPushProperties properties;
     private final WebPushSubscriptionRepository repository;
-    private final ObjectMapper mapper = new ObjectMapper();
-    private final PushService pushService;
+    private final ObjectMapper mapper;
+    private final Optional<WebPushClient> webPushClient;
 
-    public WebPushService(WebPushProperties properties, WebPushSubscriptionRepository repository) throws GeneralSecurityException {
-        this(properties, repository, buildPushService(properties));
-    }
-
-    public WebPushService(WebPushProperties properties, WebPushSubscriptionRepository repository, PushService pushService) {
-        ensureBouncyCastleProvider();
+    public WebPushService(WebPushProperties properties,
+                         WebPushSubscriptionRepository repository,
+                         ObjectMapper mapper,
+                         Optional<WebPushClient> webPushClient) {
         this.properties = properties;
         this.repository = repository;
-        this.pushService = pushService;
-    }
-
-    private static void ensureBouncyCastleProvider() {
-        if (Security.getProvider("BC") == null) {
-            Security.addProvider(new BouncyCastleProvider());
-        }
-    }
-
-    private static PushService buildPushService(WebPushProperties properties) throws GeneralSecurityException {
-        ensureBouncyCastleProvider();
-
-        if (properties.getPublicKey() == null || properties.getPublicKey().isBlank()
-                || properties.getPrivateKey() == null || properties.getPrivateKey().isBlank()) {
-            return null;
-        }
-
-        return new PushService(properties.getPublicKey(), properties.getPrivateKey(), properties.getSubject());
+        this.mapper = mapper;
+        this.webPushClient = webPushClient;
     }
 
     public boolean isConfigured() {
         return properties.getPublicKey() != null && !properties.getPublicKey().isBlank()
-                && properties.getPrivateKey() != null && !properties.getPrivateKey().isBlank();
+                && properties.getPrivateKey() != null && !properties.getPrivateKey().isBlank()
+                && webPushClient.isPresent();
     }
 
     public void sendSetupAlert(ExplainedSetup explained) {
@@ -71,7 +51,7 @@ public class WebPushService {
                 Subscription subscription = new Subscription(s.getEndpoint(), new Subscription.Keys(s.getP256dh(), s.getAuth()));
                 Notification notification = new Notification(subscription, payload);
 
-                HttpResponse response = pushService.send(notification);
+                HttpResponse response = webPushClient.get().send(notification);
                 int status = response.getStatusLine().getStatusCode();
 
                 if (status == 200 || status == 201) {
