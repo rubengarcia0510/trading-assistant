@@ -29,20 +29,21 @@ public class WebPushService {
         this(properties, repository, buildPushService(properties));
     }
 
-    // Constructor de test: permite inyectar un PushService mockeado.
     public WebPushService(WebPushProperties properties, WebPushSubscriptionRepository repository, PushService pushService) {
+        ensureBouncyCastleProvider();
         this.properties = properties;
         this.repository = repository;
         this.pushService = pushService;
     }
 
-    /**
-     * API real de nl.martijndwars:web-push 5.1.2 — el constructor toma las tres
-     * claves VAPID directamente como String (base64url), sin parsear la private
-     * key a mano ni probar variantes de constructor.
-     */
+    private static void ensureBouncyCastleProvider() {
+        if (Security.getProvider("BC") == null) {
+            Security.addProvider(new BouncyCastleProvider());
+        }
+    }
+
     private static PushService buildPushService(WebPushProperties properties) throws GeneralSecurityException {
-        Security.addProvider(new BouncyCastleProvider());
+        ensureBouncyCastleProvider();
 
         if (properties.getPublicKey() == null || properties.getPublicKey().isBlank()
                 || properties.getPrivateKey() == null || properties.getPrivateKey().isBlank()) {
