@@ -4,11 +4,12 @@ import { Router } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { ExplainedSetup, HistoryEntry, SetupsService } from '../core/setups.service';
 import { Sparkline } from '../shared/sparkline';
+import { Notifications } from '../shared/notifications/notifications';
 
 @Component({
   selector: 'app-setups',
   standalone: true,
-  imports: [CurrencyPipe, DatePipe, Sparkline],
+  imports: [CurrencyPipe, DatePipe, Sparkline, Notifications],
   templateUrl: './setups.html',
   styleUrl: './setups.scss',
 })

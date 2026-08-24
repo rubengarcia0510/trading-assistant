@@ -1,0 +1,30 @@
+<section class="notifications">
+  <div>
+    <span class="eyebrow">Notificaciones</span>
+    <p class="status">
+      {{ enabled() ? 'Notificaciones activas' : 'Notificaciones desactivadas' }}
+    </p>
+  </div>
+
+  @if (enabled()) {
+    <button
+      class="notification-btn"
+      type="button"
+      (click)="disable()"
+      [disabled]="loading()">
+      {{ loading() ? 'Desactivando…' : 'Desactivar' }}
+    </button>
+  } @else {
+    <button
+      class="notification-btn"
+      type="button"
+      (click)="enable()"
+      [disabled]="loading()">
+      {{ loading() ? 'Activando…' : 'Activar notificaciones' }}
+    </button>
+  }
+
+  @if (error()) {
+    <p class="error">{{ error() }}</p>
+  }
+</section>
