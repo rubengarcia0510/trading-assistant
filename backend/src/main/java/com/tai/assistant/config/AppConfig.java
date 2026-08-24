@@ -4,7 +4,7 @@ import com.tai.assistant.notification.DefaultWebPushClient;
 import com.tai.assistant.notification.WebPushClient;
 import com.tai.assistant.notification.WebPushProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestClient;
@@ -28,11 +28,7 @@ public class AppConfig {
     }
 
     @Bean
-    @ConditionalOnProperty(
-            prefix = "tai.webpush",
-            name = {"public-key", "private-key"},
-            matchIfMissing = false
-    )
+    @Conditional(WebPushConfiguredCondition.class)
     public WebPushClient webPushClient(WebPushProperties properties) throws GeneralSecurityException {
         return new DefaultWebPushClient(
                 properties.getPublicKey(),
