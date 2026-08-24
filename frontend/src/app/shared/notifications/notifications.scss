@@ -1,0 +1,31 @@
+.notifications {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(127, 224, 192, 0.2);
+}
+
+.status {
+  margin: 0.25rem 0 0;
+}
+
+.notification-btn {
+  border: 0;
+  border-radius: 8px;
+  padding: 0.65rem 1rem;
+  cursor: pointer;
+}
+
+.notification-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.error {
+  margin: 0;
+  font-size: 0.85rem;
+}
