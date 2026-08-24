@@ -1,4 +1,4 @@
-// URL del backend. En desarrollo apunta a localhost:8080 (Spring Boot corriendo local).
-// En producción (TAI-18, deploy en Vercel), esto se reemplaza por la URL de Render
-// vía variable de entorno de build — por ahora queda hardcodeado para desarrollo.
+// Backend URL.
+// Local development uses localhost by default. TAI-18 deployment replaces
+// this value during the Vercel build through scripts/set-api-url.mjs.
 export const API_URL = 'http://localhost:8080';
