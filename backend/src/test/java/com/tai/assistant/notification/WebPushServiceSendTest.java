@@ -147,4 +147,36 @@ void testSendSetupAlertRemovesSubscriptionOn410() throws Exception {
     verify(repository, times(1)).delete(subscription);
 }
 
+@Test
+void testSendSetupAlertKeepsSubscriptionWhenClientThrows() throws Exception {
+    when(properties.getPublicKey()).thenReturn("pub");
+    when(properties.getPrivateKey()).thenReturn("priv");
+    when(webPushClientOptional.isPresent()).thenReturn(true);
+    when(webPushClientOptional.get()).thenReturn(webPushClient);
+
+    when(subscription.getEndpoint()).thenReturn("https://example.com/1");
+    when(subscription.getP256dh()).thenReturn("p256dh_value");
+    when(subscription.getAuth()).thenReturn("auth_value");
+
+    when(repository.findAll()).thenReturn(List.of(subscription));
+    when(mapper.writeValueAsString(any())).thenReturn("{\"title\":\"test\"}");
+    when(webPushClient.send(any()))
+            .thenThrow(new RuntimeException("push failed"));
+
+    ExplainedSetup explained = mock(ExplainedSetup.class);
+    Setup setup = mock(Setup.class);
+    when(setup.symbol()).thenReturn("AAPL");
+    when(explained.setup()).thenReturn(setup);
+    when(explained.explanation()).thenReturn("summary");
+
+    try (MockedConstruction<Notification> ignored =
+                 mockConstruction(Notification.class)) {
+
+        webPushService.sendSetupAlert(explained);
+    }
+
+    verify(webPushClient, times(1)).send(any());
+    verify(repository, never()).delete(any());
+}
+
 }
