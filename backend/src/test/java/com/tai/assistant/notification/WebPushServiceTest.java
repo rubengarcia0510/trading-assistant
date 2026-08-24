@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tai.assistant.detection.ExplainedSetup;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -15,38 +16,43 @@ import static org.mockito.Mockito.*;
 class WebPushServiceTest {
 
     @Mock
+    WebPushProperties properties;
+
+    @Mock
     WebPushSubscriptionRepository repository;
 
     @Mock
     ObjectMapper mapper;
 
+    @Mock
+    Optional<WebPushClient> webPushClient;
+
+    @InjectMocks
+    WebPushService webPushService;
+
     @Test
     void testSendSetupAlertSkipsWhenNotConfigured() {
-        // WebPushProperties sin claves -> isConfigured() == false
-        WebPushProperties props = new WebPushProperties();
-        WebPushService svc = new WebPushService(props, repository, mapper, Optional.empty());
+        when(properties.getPublicKey()).thenReturn(null);
 
         ExplainedSetup explained = mock(ExplainedSetup.class);
 
-        // No debe lanzar excepción y no debe llamar a repository.findAll()
-        svc.sendSetupAlert(explained);
+        webPushService.sendSetupAlert(explained);
 
         verify(repository, never()).findAll();
+        verify(webPushClient, never()).get();
     }
 
     @Test
     void testSendSetupAlertSkipsWhenWebPushClientNotPresent() {
-        // WebPushProperties con claves pero sin WebPushClient -> isConfigured() == false
-        WebPushProperties props = new WebPushProperties();
-        props.setPublicKey("pub");
-        props.setPrivateKey("priv");
-        WebPushService svc = new WebPushService(props, repository, mapper, Optional.empty());
+        when(properties.getPublicKey()).thenReturn("pub");
+        when(properties.getPrivateKey()).thenReturn("priv");
+        when(webPushClient.isPresent()).thenReturn(false);
 
         ExplainedSetup explained = mock(ExplainedSetup.class);
 
-        // No debe intentar enviar
-        svc.sendSetupAlert(explained);
+        webPushService.sendSetupAlert(explained);
 
         verify(repository, never()).findAll();
+        verify(webPushClient, never()).get();
     }
 }
